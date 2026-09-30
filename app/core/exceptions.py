@@ -8,3 +8,7 @@ class NotFoundError(TaskFlowError):
 
 class TodoNotFoundError(NotFoundError):
     """Raised when the requested todo cannot be found"""
+
+
+class UserNotFoundError(NotFoundError):
+    """Raised when the requested user cannot be found"""
