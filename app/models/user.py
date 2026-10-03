@@ -1,4 +1,4 @@
-from sqlalchemy import Uuid, String, DateTime, func, Boolean
+from sqlalchemy import Uuid, String, DateTime, func, Boolean, Identity
 from sqlalchemy.orm import Mapped, mapped_column
 
 from datetime import datetime
@@ -10,7 +10,7 @@ from .base import Base
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(Identity(), primary_key=True)
 
     public_id: Mapped[UUID] = mapped_column("publicId", Uuid, default=uuid7, index=True)
 

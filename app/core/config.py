@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str
     SMTP_PASSWORD: str
     MAIL_FROM: str
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str
 
     model_config = SettingsConfigDict(env_file=".env")
 

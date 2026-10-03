@@ -35,3 +35,28 @@ class BadRequestError(TaskFlowError):
 
 class InvalidOTPError(BadRequestError):
     """Raised when a verification code is invalid"""
+
+
+class ExpiredOTPError(BadRequestError):
+    """Raised when a verification code is expired"""
+
+
+# Authorization exceptions
+class AuthorizationError(Exception):
+    """Base exception for authorization-related errors."""
+
+
+class InvalidCredentialsError(AuthorizationError):
+    """Raised when the provided login credentials are invalid."""
+
+
+class InvalidAccessTokenError(AuthorizationError):
+    """Raised when an access token is invalid."""
+
+
+class InvalidRefreshTokenError(AuthorizationError):
+    """Raised when an refresh token is invalid."""
+
+
+class ExpiredAccessTokenError(AuthorizationError):
+    """Raised when an access token has expired."""

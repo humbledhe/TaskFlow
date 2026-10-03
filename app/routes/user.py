@@ -39,7 +39,7 @@ async def create_user(user_data: UserCreate, session: DbDependency):
 
 
 @router.delete("/{user_uid}", status_code=status.HTTP_204_NO_CONTENT)
-async def get_user(user_uid: UUID, session: DbDependency):
+async def delete_user(user_uid: UUID, session: DbDependency):
     await user_service.delete_user(user_uid, session)
 
     return {"detail": "User has been deleted successfully"}

@@ -11,11 +11,11 @@ from app.core.security import hash, verify
 from app.core.exceptions import (
     InvalidOTPError,
     UserAlreadyVerifiedError,
-    ExpiredOTPError,
+    ExpiredOTPError
 )
 from app.models.email_verification import EmailVerification
 from app.models.user import User
-from app.schemas.email import OTPCreate, OTPVerify, OTPSend
+from app.schemas.email_verification import OTPCreate, OTPVerify, OTPSend
 from .user import UserService
 
 
@@ -26,7 +26,7 @@ def generate_otp() -> str:
     return str(otp)
 
 
-class EmailService:
+class EmailVerificationService:
     """Handle email delivery and email verification."""
 
     async def send_email(self, *, to: str, body: str, subject: str) -> None:
@@ -48,7 +48,7 @@ class EmailService:
             start_tls=True,
         )
 
-    async def send_otp(self, otp_send: OTPSend, session: AsyncSession):
+    async def send_otp(self, otp_send: OTPSend, session: AsyncSession) -> None:
         """Generate, persist, and email an account-verification OTP."""
         user_public_id = otp_send.user_public_id
 
@@ -56,8 +56,9 @@ class EmailService:
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
-        if user.is_verified == True:
-            raise UserAlreadyVerifiedError("User is already verified")
+        if user:
+            if user.is_verified == True:
+                raise UserAlreadyVerifiedError("User is already verified")
 
         prev_otp = await self.get_stored_otp(user.id, session)
 
@@ -99,8 +100,6 @@ class EmailService:
 
         await self.send_email(to=user_email, body=otp, subject=subject)
 
-        return otp
-
     async def get_stored_otp(self, user_id: int, session: AsyncSession):
         """Return the user's current email-verification record."""
         stmt = select(EmailVerification).where(EmailVerification.user_id == user_id)
@@ -109,16 +108,16 @@ class EmailService:
 
         return otp
 
-    async def verify_otp(self, otp_vefify: OTPVerify, session: AsyncSession):
+    async def verify_otp(self, otp_verify: OTPVerify, session: AsyncSession):
         """Verify an OTP and mark the user's email as verified."""
-        user_public_id = otp_vefify.user_public_id
+        user_public_id = otp_verify.user_public_id
 
         user_service = UserService()
 
         user = await user_service.get_user(user_public_id, session)
         otp = await self.get_stored_otp(user.id, session)
 
-        user_otp = otp_vefify.token_hash
+        user_otp = otp_verify.token_hash
         correct_otp = otp.token_hash
 
         # The submitted OTP is plaintext; the stored value is its hash.
@@ -126,22 +125,13 @@ class EmailService:
             is_expired = otp.expires_at <= datetime.now(timezone.utc)
 
             if is_expired:
-                await session.execute(
-                    delete(EmailVerification).where(
-                        EmailVerification.user_id == user.id
-                    )
-                )
-
-                await session.commit()
-
-                raise InvalidOTPError("Invalid or expired verification code")
+                raise ExpiredOTPError("Expired verification code")
 
             verified_at = datetime.now(timezone.utc)
 
             await session.execute(
-                update(EmailVerification)
+                delete(EmailVerification)
                 .where(EmailVerification.user_id == user.id)
-                .values(verified_at=verified_at)
             )
 
             await session.commit()

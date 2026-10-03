@@ -1,6 +1,11 @@
 from pydantic import BaseModel, ConfigDict, Field, AwareDatetime
 
+from uuid import UUID
+from typing import Generic, TypeVar
+
 from app.enums.todo import TodoPriority
+
+T = TypeVar("T")
 
 
 class TodoBase(BaseModel):
@@ -25,7 +30,12 @@ class TodoUpdateModel(TodoCreateModel):
 
 
 class TodoResponseModel(TodoBase):
+    public_id: UUID = Field(alias="publicId")
     is_completed: bool = Field(alias="isCompleted")
     due_date: AwareDatetime = Field(alias="dueDate")
     created_at: AwareDatetime = Field(alias="createdAt")
-    updated_at: AwareDatetime = Field(alias="updateAt")
+    updated_at: AwareDatetime | None = Field(alias="updateAt")
+
+
+class Response(BaseModel, Generic[T]):
+    data: T
