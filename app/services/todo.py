@@ -6,18 +6,20 @@ from uuid import UUID
 from app.models.todo import Todo
 from app.models.user import User
 from app.schemas.todo import TodoCreateModel, TodoUpdateModel
-from app.core.exceptions import TodoNotFoundError
+from app.core.exceptions import TodoNotFoundError, UserNotVerifiedError
 
 
 class TodoSerivces:
-    async def get_todos(self, current_user: User, session: AsyncSession):
+    async def get_todos(self, current_user: User, session: AsyncSession) -> list[Todo]:
         stmt = select(Todo).where(Todo.user_id == current_user.id)
         result = await session.execute(stmt)
         todos = result.scalars().all()
 
         return todos
 
-    async def get_todo(self, todo_uid: UUID, current_user: User, session: AsyncSession):
+    async def get_todo(
+        self, todo_uid: UUID, current_user: User, session: AsyncSession
+    ) -> Todo:
         stmt = (
             select(Todo)
             .where(Todo.user_id == current_user.id)
@@ -30,7 +32,7 @@ class TodoSerivces:
 
     async def create_todo(
         self, new_todo: TodoCreateModel, current_user: User, session: AsyncSession
-    ):
+    ) -> Todo:
         todo = Todo(user_id=current_user.id, **new_todo.model_dump())
 
         session.add(todo)
@@ -45,7 +47,7 @@ class TodoSerivces:
         update_todo: TodoUpdateModel,
         current_user: User,
         session: AsyncSession,
-    ):
+    ) -> Todo:
         user_id = current_user.id
 
         stmt = (
@@ -67,7 +69,7 @@ class TodoSerivces:
 
     async def delete_todo(
         self, todo_uid: UUID, current_user: User, session: AsyncSession
-    ):
+    ) -> None:
         stmt = (
             delete(Todo)
             .where(Todo.user_id == current_user.id)

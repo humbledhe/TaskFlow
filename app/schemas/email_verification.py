@@ -15,7 +15,8 @@ class OTPCreate(OTPBase):
     created_at: AwareDatetime = Field(alias="createdAt")
 
 
-class OTPVerify(OTPBase):
+class OTPVerify(BaseModel):
+    otp: str
     user_public_id: UUID
 
 

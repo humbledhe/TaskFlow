@@ -60,3 +60,7 @@ class InvalidRefreshTokenError(AuthorizationError):
 
 class ExpiredAccessTokenError(AuthorizationError):
     """Raised when an access token has expired."""
+
+
+class UserNotVerifiedError(AuthorizationError):
+    """Raised when a user attempts an action before verifying their account."""

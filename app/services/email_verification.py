@@ -11,7 +11,7 @@ from app.core.security import hash, verify
 from app.core.exceptions import (
     InvalidOTPError,
     UserAlreadyVerifiedError,
-    ExpiredOTPError
+    ExpiredOTPError,
 )
 from app.models.email_verification import EmailVerification
 from app.models.user import User
@@ -117,21 +117,20 @@ class EmailVerificationService:
         user = await user_service.get_user(user_public_id, session)
         otp = await self.get_stored_otp(user.id, session)
 
-        user_otp = otp_verify.token_hash
-        correct_otp = otp.token_hash
+        submitted_otp = otp_verify.otp
+        stored_hash = otp.token_hash
+
+        is_expired = otp.expires_at <= datetime.now(timezone.utc)
+
+        if is_expired:
+            raise ExpiredOTPError("Expired verification code")
 
         # The submitted OTP is plaintext; the stored value is its hash.
-        if verify(user_otp, correct_otp):
-            is_expired = otp.expires_at <= datetime.now(timezone.utc)
-
-            if is_expired:
-                raise ExpiredOTPError("Expired verification code")
-
+        if verify(submitted_otp, stored_hash):
             verified_at = datetime.now(timezone.utc)
 
             await session.execute(
-                delete(EmailVerification)
-                .where(EmailVerification.user_id == user.id)
+                delete(EmailVerification).where(EmailVerification.user_id == user.id)
             )
 
             await session.commit()
