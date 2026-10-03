@@ -9,6 +9,7 @@ from app.services.user import UserService
 from app.schemas.user import UserCreate, UserResponse, Response
 
 router = APIRouter()
+
 user_service = UserService()
 
 DbDependency = Annotated[AsyncSession, Depends(get_async_db)]

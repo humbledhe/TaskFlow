@@ -1,11 +1,12 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from uuid import UUID
 
 from app.models.user import User
 from app.schemas.user import UserCreate
-from app.core.exceptions import UserNotFoundError
+from app.core.exceptions import UserNotFoundError, EmailAlreadyExistsError
 from app.core.security import hash
 
 
@@ -33,9 +34,13 @@ class UserService:
 
         user = User(**user_data.model_dump())
 
-        session.add(user)
-        await session.commit()
-        await session.refresh(user)
+        try:
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+        except IntegrityError:
+            await session.rollback()
+            raise EmailAlreadyExistsError("Email already exists")
 
         return user
 

@@ -1,7 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field, AwareDatetime
 
-from datetime import datetime
-
 from app.enums.todo import TodoPriority
 
 

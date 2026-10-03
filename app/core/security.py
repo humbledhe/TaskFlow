@@ -7,5 +7,5 @@ def hash(password: str) -> str:
     return password_hash.hash(password)
 
 
-def verify(password: str, hashed_password: str):
-    return password_hash.verify(password, password_hash)
+def verify(password: str, hashed_password: str) -> bool:
+    return password_hash.verify(password, hashed_password)
