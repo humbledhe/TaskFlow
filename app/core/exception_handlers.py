@@ -1,7 +1,13 @@
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
-from .exceptions import TodoNotFoundError, ConflictError, BadRequestError, AuthorizationError
+from .exceptions import (
+    TodoNotFoundError,
+    ConflictError,
+    BadRequestError,
+    AuthorizationError,
+    ForbiddenRequestError,
+)
 
 
 async def not_found_error(request: Request, exc: TodoNotFoundError):
@@ -20,8 +26,15 @@ async def bad_request_error(request: Request, exc: BadRequestError):
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST, content={"detail": str(exc)}
     )
-    
+
+
 async def authorization_error(request: Request, exc: AuthorizationError):
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": str(exc)}
+    )
+
+
+async def forbidden_request_error(request: Request, exc: ForbiddenRequestError):
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN, content={"detail": str(exc)}
     )

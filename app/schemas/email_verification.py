@@ -17,9 +17,9 @@ class OTPCreate(OTPBase):
 
 class OTPVerify(BaseModel):
     otp: str
-    user_public_id: UUID
+    email: EmailStr
 
 
 class OTPSend(BaseModel):
-    user_public_id: UUID
+    email: EmailStr
     subject: str = "Verify email"

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 from uuid import UUID
 
-from app.core.dependencies import get_async_db, get_current_user
+from app.core.dependencies import DbDependency, CurrentUserDependency
 from app.services.todo import TodoSerivces
 from app.schemas.todo import (
     TodoCreateModel,
@@ -17,9 +17,6 @@ from app.models.user import User
 
 router = APIRouter()
 todo_services = TodoSerivces()
-
-DbDependency = Annotated[AsyncSession, Depends(get_async_db)]
-CurrentUserDependency = Annotated[User, Depends(get_current_user)]
 
 
 @router.get("/", response_model=Response[list[TodoResponseModel]])

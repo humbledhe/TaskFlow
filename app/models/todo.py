@@ -1,5 +1,14 @@
-from sqlalchemy import Uuid, String, Boolean, Enum, DateTime, func, ForeignKey, Identity
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    Uuid,
+    String,
+    Boolean,
+    Enum,
+    DateTime,
+    func,
+    ForeignKey,
+    Identity,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from uuid import UUID, uuid7
 from datetime import datetime
@@ -36,3 +45,5 @@ class Todo(Base):
     updated_at: Mapped[datetime | None] = mapped_column(
         "updated_at", DateTime(timezone=True), onupdate=func.now()
     )
+
+    user: Mapped["User"] = relationship(back_populates="todos", lazy="raise")

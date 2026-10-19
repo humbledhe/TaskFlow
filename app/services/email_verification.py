@@ -2,16 +2,18 @@ import aiosmtplib
 from email.message import EmailMessage
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from redis.asyncio import Redis
 
 import secrets
 from datetime import datetime, timezone, timedelta
 
 from app.core.config import settings
-from app.core.security import hash, verify
+from app.core.security import hash_otp
 from app.core.exceptions import (
     InvalidOTPError,
     UserAlreadyVerifiedError,
     ExpiredOTPError,
+    UserNotFoundError,
 )
 from app.models.email_verification import EmailVerification
 from app.models.user import User
@@ -24,6 +26,18 @@ def generate_otp() -> str:
     otp = secrets.randbelow(900000) + 100000
 
     return str(otp)
+
+
+async def store_otp_digest(
+    otp_digest: str, purpose: str, user_id: str, ex: int, redis: Redis
+):
+    await redis.set(name=f"otp:{purpose}:{user_id}", value=otp_digest, ex=ex)
+
+
+async def get_stored_otp_digest(purpose: str, user_id: str, redis: Redis):
+    otp_digest = await redis.get(name=f"otp:{purpose}:{user_id}")
+
+    return otp_digest
 
 
 class EmailVerificationService:
@@ -48,92 +62,52 @@ class EmailVerificationService:
             start_tls=True,
         )
 
-    async def send_otp(self, otp_send: OTPSend, session: AsyncSession) -> None:
+    async def send_otp(
+        self, otp_send: OTPSend, session: AsyncSession, redis: Redis
+    ) -> None:
         """Generate, persist, and email an account-verification OTP."""
-        user_public_id = otp_send.user_public_id
+        user_email = otp_send.email
 
-        stmt = select(User).where(User.public_id == user_public_id)
+        stmt = select(User).where(User.email == user_email)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
-        if user:
-            if user.is_verified == True:
-                raise UserAlreadyVerifiedError("User is already verified")
-
-        prev_otp = await self.get_stored_otp(user.id, session)
-
-        if prev_otp:
-            is_expired = prev_otp.expires_at <= datetime.now(timezone.utc)
-
-            if is_expired:
-                await session.execute(
-                    delete(EmailVerification).where(
-                        EmailVerification.user_id == user.id
-                    )
-                )
-
-                await session.commit()
+        if user is None:
+            raise UserNotFoundError("User does not exist")
 
         otp = generate_otp()
 
         # Store only the hash. The plaintext OTP should never be persisted.
-        hashed_otp = hash(otp)
+        otp_digest = hash_otp(otp, "email-verification", str(user.public_id))
 
-        now = datetime.now(timezone.utc)
-        expires = now + timedelta(minutes=5)
-
-        otp_create_data = OTPCreate(
-            token_hash=hashed_otp,
-            user_id=user.id,
-            created_at=now,
-            expires_at=expires,
+        await store_otp_digest(
+            otp_digest, "email-verification", str(user.public_id), 300, redis
         )
 
-        email_verification_data = EmailVerification(**otp_create_data.model_dump())
-
-        session.add(email_verification_data)
-
-        await session.commit()
-
-        user_email = user.email
         subject = otp_send.subject
 
         await self.send_email(to=user_email, body=otp, subject=subject)
 
-    async def get_stored_otp(self, user_id: int, session: AsyncSession):
-        """Return the user's current email-verification record."""
-        stmt = select(EmailVerification).where(EmailVerification.user_id == user_id)
-        result = await session.execute(stmt)
-        otp = result.scalar()
-
-        return otp
-
-    async def verify_otp(self, otp_verify: OTPVerify, session: AsyncSession):
+    async def verify_otp(
+        self, otp_verify: OTPVerify, session: AsyncSession, redis: Redis
+    ):
         """Verify an OTP and mark the user's email as verified."""
-        user_public_id = otp_verify.user_public_id
+        user_email = otp_verify.email
 
-        user_service = UserService()
+        stmt = select(User).where(User.email == user_email)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
 
-        user = await user_service.get_user(user_public_id, session)
-        otp = await self.get_stored_otp(user.id, session)
+        submitted_otp = hash_otp(
+            otp_verify.otp, "email-verification", str(user.public_id)
+        )
+        stored_otp_digest = await get_stored_otp_digest(
+            "email-verification", str(user.public_id), redis
+        )
 
-        submitted_otp = otp_verify.otp
-        stored_hash = otp.token_hash
-
-        is_expired = otp.expires_at <= datetime.now(timezone.utc)
-
-        if is_expired:
-            raise ExpiredOTPError("Expired verification code")
-
-        # The submitted OTP is plaintext; the stored value is its hash.
-        if verify(submitted_otp, stored_hash):
+        # The submitted OTP and stored otp are both hashed and compared
+        if submitted_otp == stored_otp_digest:
             verified_at = datetime.now(timezone.utc)
-
-            await session.execute(
-                delete(EmailVerification).where(EmailVerification.user_id == user.id)
-            )
-
-            await session.commit()
 
             stmt = (
                 update(User)

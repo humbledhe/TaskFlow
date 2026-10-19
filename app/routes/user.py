@@ -4,15 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 from uuid import UUID
 
-from app.core.dependencies import get_async_db
+from app.core.dependencies import DbDependency
 from app.services.user import UserService
 from app.schemas.user import UserCreate, UserResponse, Response
 
 router = APIRouter()
 
 user_service = UserService()
-
-DbDependency = Annotated[AsyncSession, Depends(get_async_db)]
 
 
 @router.get("", response_model=Response[list[UserResponse]])

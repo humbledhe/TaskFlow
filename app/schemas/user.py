@@ -3,6 +3,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, AwareDatetime
 from uuid import UUID
 from typing import Generic, TypeVar
 
+from .todo import TodoResponseModel
+
 T = TypeVar("T")
 
 
@@ -21,6 +23,7 @@ class UserResponse(UserBase):
     is_verified: bool = Field(alias="isVerified")
     created_at: AwareDatetime = Field(alias="createdAt")
     updated_at: AwareDatetime | None = Field(alias="updatedAt")
+    todos: list[TodoResponseModel] | None
 
 
 class Response(BaseModel, Generic[T]):

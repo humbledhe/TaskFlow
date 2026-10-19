@@ -10,8 +10,10 @@ class Settings(BaseSettings):
     MAIL_FROM: str
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
+    REDIS_URL: str
+    OTP_SECRET_KEY: str
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 settings = Settings()

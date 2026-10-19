@@ -1,6 +1,7 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 from uuid import UUID
 
@@ -12,14 +13,18 @@ from app.core.security import hash
 
 class UserService:
     async def get_users(self, session: AsyncSession):
-        stmt = select(User)
+        stmt = select(User).options(selectinload(User.todos))
         result = await session.execute(stmt)
         users = result.scalars().all()
 
         return users
 
     async def get_user(self, user_uid: UUID, session: AsyncSession):
-        stmt = select(User).where(User.public_id == user_uid)
+        stmt = (
+            select(User)
+            .where(User.public_id == user_uid)
+            .options(selectinload(User.todos))
+        )
         result = await session.execute(stmt)
         user = result.scalar()
 

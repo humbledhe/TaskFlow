@@ -7,17 +7,6 @@ from .user import UserResponse
 T = TypeVar("T")
 
 
-class AuthBase(BaseModel):
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
-    
-    email: EmailStr
-    password_hash: str = Field(alias="passwordHash")
-
-
-class AuthUser(AuthBase):
-    pass
-
-
 class AuthResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

@@ -42,7 +42,7 @@ class ExpiredOTPError(BadRequestError):
 
 
 # Authorization exceptions
-class AuthorizationError(Exception):
+class AuthorizationError(TaskFlowError):
     """Base exception for authorization-related errors."""
 
 
@@ -64,3 +64,12 @@ class ExpiredAccessTokenError(AuthorizationError):
 
 class UserNotVerifiedError(AuthorizationError):
     """Raised when a user attempts an action before verifying their account."""
+
+
+# Forbidden request exceptions
+class ForbiddenRequestError(TaskFlowError):
+    """Base exceptions for all Forbidden-request related errors"""
+
+
+class RevokedAccessTokenError(ForbiddenRequestError):
+    """Raised when the provided access token has been revoked"""
