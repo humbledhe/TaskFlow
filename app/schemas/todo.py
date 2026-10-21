@@ -32,7 +32,6 @@ class TodoUpdateModel(TodoCreateModel):
 class TodoResponseModel(TodoBase):
     public_id: UUID = Field(alias="publicId")
     is_completed: bool = Field(alias="isCompleted")
-    due_date: AwareDatetime = Field(alias="dueDate")
     created_at: AwareDatetime = Field(alias="createdAt")
     updated_at: AwareDatetime | None = Field(alias="updateAt")
 

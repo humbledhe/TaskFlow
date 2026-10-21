@@ -10,7 +10,8 @@ from app.core.exceptions import TodoNotFoundError, UserNotVerifiedError
 
 
 class TodoSerivces:
-    async def get_todos(self, current_user: User, session: AsyncSession) -> list[Todo]:
+    @staticmethod
+    async def get_todos(current_user: User, session: AsyncSession) -> list[Todo]:
         stmt = select(Todo).where(Todo.user_id == current_user.id)
         result = await session.execute(stmt)
         todos = result.scalars().all()
@@ -30,8 +31,9 @@ class TodoSerivces:
 
         return todo
 
+    @staticmethod
     async def create_todo(
-        self, new_todo: TodoCreateModel, current_user: User, session: AsyncSession
+        new_todo: TodoCreateModel, current_user: User, session: AsyncSession
     ) -> Todo:
         todo = Todo(user_id=current_user.id, **new_todo.model_dump())
 
@@ -70,14 +72,12 @@ class TodoSerivces:
     async def delete_todo(
         self, todo_uid: UUID, current_user: User, session: AsyncSession
     ) -> None:
-        stmt = (
-            delete(Todo)
-            .where(Todo.user_id == current_user.id)
-            .where(Todo.public_id == todo_uid)
+        todo = await self.get_todo(
+            todo_uid=todo_uid, current_user=current_user, session=session
         )
-        result = await session.execute(stmt)
 
-        if result.rowcount == 0:
+        if todo is None:
             raise TodoNotFoundError("Todo does not exist")
 
+        await session.delete(todo)
         await session.commit()

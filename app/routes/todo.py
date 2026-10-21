@@ -16,12 +16,11 @@ from app.schemas.todo import (
 from app.models.user import User
 
 router = APIRouter()
-todo_services = TodoSerivces()
 
 
-@router.get("/", response_model=Response[list[TodoResponseModel]])
+@router.get("", response_model=Response[list[TodoResponseModel]])
 async def get_todos(current_user: CurrentUserDependency, session: DbDependency):
-    todos = await todo_services.get_todos(current_user, session)
+    todos = await TodoSerivces.get_todos(current_user, session)
 
     return {"data": todos}
 
@@ -30,20 +29,26 @@ async def get_todos(current_user: CurrentUserDependency, session: DbDependency):
 async def get_todo(
     todo_uid: UUID, current_user: CurrentUserDependency, session: DbDependency
 ):
-    todo = await todo_services.get_todo(todo_uid, current_user, session)
+    todo_services = TodoSerivces()
+
+    todo = await todo_services.get_todo(
+        todo_uid=todo_uid, current_user=current_user, session=session
+    )
 
     return {"data": todo}
 
 
 @router.post(
-    "/", response_model=Response[TodoResponseModel], status_code=status.HTTP_201_CREATED
+    "", response_model=Response[TodoResponseModel], status_code=status.HTTP_201_CREATED
 )
 async def create_todo(
     new_todo: TodoCreateModel,
     current_user: CurrentUserDependency,
     session: DbDependency,
 ):
-    new_todo = await todo_services.create_todo(new_todo, current_user, session)
+    new_todo = await TodoSerivces.create_todo(
+        new_todo=new_todo, current_user=current_user, session=session
+    )
 
     return {"data": new_todo}
 
@@ -55,8 +60,13 @@ async def update_todo(
     current_user: CurrentUserDependency,
     session: DbDependency,
 ):
+    todo_services = TodoSerivces()
+
     updated_todo = await todo_services.update_todo(
-        todo_uid, update_todo, current_user, session
+        todo_uid=todo_uid,
+        update_todo=update_todo,
+        current_user=current_user,
+        session=session,
     )
 
     return {"data": updated_todo}
@@ -66,6 +76,10 @@ async def update_todo(
 async def delete_todo(
     todo_uid: UUID, current_user: CurrentUserDependency, session: DbDependency
 ):
-    await todo_services.delete_todo(todo_uid, current_user, session)
+    todo_services = TodoSerivces()
+
+    await todo_services.delete_todo(
+        todo_uid=todo_uid, current_user=current_user, session=session
+    )
 
     return {"detail": "Todo deleted successfully"}

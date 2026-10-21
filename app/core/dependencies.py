@@ -1,21 +1,27 @@
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Request, Depends
+from typing import Annotated, AsyncGenerator
+
+from fastapi import Depends, Request
 from fastapi.security import HTTPBearer
 from redis.asyncio import Redis
-
-from typing import AsyncGenerator, Annotated
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import async_session
 from app.models.user import User
+from app.services.auth import token_in_blocklist
+
 from .security import decode_token
 from .exceptions import (
     InvalidAccessTokenError,
     InvalidRefreshTokenError,
-    UserNotVerifiedError,
     RevokedAccessTokenError,
+    UserNotVerifiedError,
 )
-from app.services.auth import token_in_blocklist
+
+
+# --------------------------------------------------
+# Database
+# --------------------------------------------------
 
 
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
@@ -23,69 +29,151 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-DbDependency = Annotated[AsyncSession, Depends(get_async_db)]
+DbDependency = Annotated[
+    AsyncSession,
+    Depends(get_async_db),
+]
+
+
+# --------------------------------------------------
+# Redis
+# --------------------------------------------------
 
 
 def get_redis(request: Request) -> Redis:
     return request.app.state.redis
 
 
-RedisDependency = Annotated[Redis, Depends(get_redis)]
+RedisDependency = Annotated[
+    Redis,
+    Depends(get_redis),
+]
+
+
+# --------------------------------------------------
+# Shared token validation
+# --------------------------------------------------
+
+
+async def validate_token(
+    token: str,
+    redis: Redis,
+    expected_type: str,
+) -> dict:
+    token_data = decode_token(token)
+
+    if not token_data:
+        if expected_type == "access":
+            raise InvalidAccessTokenError("Invalid access token")
+
+        raise InvalidRefreshTokenError("Invalid refresh token")
+
+    if token_data.get("type") != expected_type:
+        if expected_type == "access":
+            raise InvalidAccessTokenError("Invalid access token")
+
+        raise InvalidRefreshTokenError("Invalid refresh token")
+
+    if not all(token_data.get(claim) for claim in ("sub", "jti", "exp")):
+        if expected_type == "access":
+            raise InvalidAccessTokenError("Invalid access token")
+
+        raise InvalidRefreshTokenError("Invalid refresh token")
+
+    if await token_in_blocklist(token_data["jti"], redis):
+        if expected_type == "access":
+            raise RevokedAccessTokenError("Access token has been revoked")
+
+        raise InvalidRefreshTokenError("Refresh token has been revoked")
+
+    return token_data
+
+
+# --------------------------------------------------
+# Authentication
+# --------------------------------------------------
 
 
 class TokenBearer(HTTPBearer):
-    def __init__(self, auto_error=True):
-        super().__init__(auto_error=auto_error)
+    def __init__(self, expected_type: str):
+        super().__init__(auto_error=False)
+        self.expected_type = expected_type
 
-    async def __call__(self, request: Request, redis: RedisDependency) -> dict:
-        creds = await super().__call__(request)
+    async def __call__(
+        self,
+        request: Request,
+        redis: RedisDependency,
+    ) -> dict:
+        cookie_name = (
+            "access_token" if self.expected_type == "access" else "refresh_token"
+        )
 
-        token = creds.credentials
-        token_data = decode_token(token)
+        # Prefer the appropriate HTTP-only cookie.
+        token = request.cookies.get(cookie_name)
 
-        if token_data is None:
-            raise InvalidAccessTokenError("Invalid access token")
+        print("Request URL:", request.url)
+        print("Cookie names received:", list(request.cookies.keys()))
+        print("Expected cookie:", cookie_name)
+        print("Cookie received:", token is not None)
 
-        self.verify_token_data(token_data)
+        # Fall back to Swagger's Authorization header.
+        if not token:
+            credentials = await super().__call__(request)
 
-        if await token_in_blocklist(token_data["jti"], redis):
-            raise RevokedAccessTokenError("This token has been revoked")
+            if credentials is not None:
+                token = credentials.credentials
 
-        return token_data
+        if not token:
+            if self.expected_type == "access":
+                raise InvalidAccessTokenError("Access token is missing")
 
-    def verify_token_data(self, token_data: dict) -> None:
-        raise NotImplementedError("Please implement this method in child classes")
+            raise InvalidRefreshTokenError("Refresh token is missing")
 
-
-class AccessTokenBearer(TokenBearer):
-    def verify_token_data(self, token_data: dict) -> None:
-        if token_data["type"] == "refresh":
-            raise InvalidAccessTokenError("Invalid access token")
-
-
-class RefreshTokenBearer(TokenBearer):
-    def verify_token_data(self, token_data: dict) -> None:
-        if token_data["type"] == "access":
-            raise InvalidRefreshTokenError("Invalid refresh token")
-
-
-Credentials = Annotated[dict, Depends(AccessTokenBearer())]
+        return await validate_token(
+            token=token,
+            redis=redis,
+            expected_type=self.expected_type,
+        )
 
 
-async def get_current_user(credentials: Credentials, session: DbDependency) -> User:
-    user_public_id = credentials["sub"]
+access_token_bearer = TokenBearer("access")
+refresh_token_bearer = TokenBearer("refresh")
 
-    stmt = select(User).where(User.public_id == user_public_id)
+
+Credentials = Annotated[
+    dict,
+    Depends(access_token_bearer),
+]
+
+RefreshCredentials = Annotated[
+    dict,
+    Depends(refresh_token_bearer),
+]
+
+
+# --------------------------------------------------
+# Current user
+# --------------------------------------------------
+
+
+async def get_current_user(
+    credentials: Credentials,
+    session: DbDependency,
+) -> User:
+    stmt = select(User).where(User.public_id == credentials["sub"])
+
     result = await session.execute(stmt)
-    user = result.scalar_one()
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise InvalidAccessTokenError(
+            "The user associated with this token no longer exists"
+        )
 
     return user
 
 
-CurrentUserDependency = Annotated[User, Depends(get_current_user)]
-
-
-# class RoleChecker:
-#     def __call__(self, current_user: CurrentUser):
-#         if not current_user.is_verified:
-#             raise UserNotVerifiedError("User account has not been verified")
+CurrentUserDependency = Annotated[
+    User,
+    Depends(get_current_user),
+]

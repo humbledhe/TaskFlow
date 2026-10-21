@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -12,13 +12,6 @@ from app.core.security import hash
 
 
 class UserService:
-    async def get_users(self, session: AsyncSession):
-        stmt = select(User).options(selectinload(User.todos))
-        result = await session.execute(stmt)
-        users = result.scalars().all()
-
-        return users
-
     async def get_user(self, user_uid: UUID, session: AsyncSession):
         stmt = (
             select(User)
@@ -30,14 +23,13 @@ class UserService:
 
         return user
 
-    async def create_user(self, user_data: UserCreate, session: AsyncSession):
-        user_password = user_data.password_hash
+    @staticmethod
+    async def create_user(user_data: UserCreate, session: AsyncSession) -> User:
+        hashed_password = hash(user_data.password)
 
-        hashed_password = hash(user_password)
-
-        user_data.password_hash = hashed_password
-
-        user = User(**user_data.model_dump())
+        user = User(
+            **user_data.model_dump(exclude={"password"}), password_hash=hashed_password
+        )
 
         try:
             session.add(user)
@@ -49,13 +41,7 @@ class UserService:
 
         return user
 
-    async def delete_user(self, user_uid: UUID, session: AsyncSession):
-        stmt = delete(User).where(User.public_id == user_uid)
-        result = await session.execute(stmt)
-
-        if result.rowcount == 0:
-            raise UserNotFoundError(
-                "The requested user cannot be found or does not exist"
-            )
-
+    @staticmethod
+    async def delete_user(current_user: User, session: AsyncSession) -> None:
+        await session.delete(current_user)
         await session.commit()

@@ -4,40 +4,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 from uuid import UUID
 
-from app.core.dependencies import DbDependency
+from app.core.dependencies import DbDependency, CurrentUserDependency
 from app.services.user import UserService
 from app.schemas.user import UserCreate, UserResponse, Response
 
 router = APIRouter()
 
-user_service = UserService()
 
-
-@router.get("", response_model=Response[list[UserResponse]])
-async def get_users(session: DbDependency):
-    users = await user_service.get_users(session)
-
-    return {"data": users}
-
-
-@router.get("/{user_uid}", response_model=Response[UserResponse])
-async def get_user(user_uid: UUID, session: DbDependency):
-    users = await user_service.get_user(user_uid, session)
-
-    return {"data": users}
+@router.get("/me", response_model=Response[UserResponse])
+async def get_user(current_user: CurrentUserDependency):
+    return {"data": current_user}
 
 
 @router.post(
-    "", status_code=status.HTTP_201_CREATED, response_model=Response[UserResponse]
+    "/create-account",
+    status_code=status.HTTP_201_CREATED,
+    response_model=Response[UserResponse],
 )
 async def create_user(user_data: UserCreate, session: DbDependency):
-    new_user = await user_service.create_user(user_data, session)
+    new_user = await UserService.create_user(user_data, session)
 
     return {"data": new_user}
 
 
-@router.delete("/{user_uid}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_uid: UUID, session: DbDependency):
-    await user_service.delete_user(user_uid, session)
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+async def delete_user(current_user: CurrentUserDependency, session: DbDependency):
+    await UserService.delete_user(current_user, session)
 
     return {"detail": "User has been deleted successfully"}

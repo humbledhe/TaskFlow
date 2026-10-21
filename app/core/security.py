@@ -18,7 +18,7 @@ def verify(password: str, hashed_password: str) -> bool:
     return password_hash.verify(password, hashed_password)
 
 
-def create_access_token(user_data: dict) -> str:
+def create_jwt_token(user_data: dict) -> str:
     secret_key = settings.JWT_SECRET_KEY
     algorithm = settings.JWT_ALGORITHM
 

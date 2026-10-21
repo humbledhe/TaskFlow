@@ -15,7 +15,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password_hash: str = Field(alias="passwordHash")
+    password: str
 
 
 class UserResponse(UserBase):
@@ -23,7 +23,6 @@ class UserResponse(UserBase):
     is_verified: bool = Field(alias="isVerified")
     created_at: AwareDatetime = Field(alias="createdAt")
     updated_at: AwareDatetime | None = Field(alias="updatedAt")
-    todos: list[TodoResponseModel] | None
 
 
 class Response(BaseModel, Generic[T]):
