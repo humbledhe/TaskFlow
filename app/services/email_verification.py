@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 
 import secrets
 from datetime import datetime, timezone, timedelta
+from uuid import UUID
 
 from app.core.config import settings
 from app.core.security import hash_otp
@@ -17,7 +18,6 @@ from app.core.exceptions import (
 )
 from app.models.email_verification import EmailVerification
 from app.models.user import User
-from app.schemas.email_verification import OTPCreate, OTPVerify, OTPSend
 from .user import UserService
 
 
@@ -63,12 +63,11 @@ class EmailVerificationService:
         )
 
     async def send_otp(
-        self, otp_send: OTPSend, session: AsyncSession, redis: Redis
+        self, user_public_id: UUID, session: AsyncSession, redis: Redis
     ) -> None:
         """Generate, persist, and email an account-verification OTP."""
-        user_email = otp_send.email
 
-        stmt = select(User).where(User.email == user_email)
+        stmt = select(User).where(User.public_id == user_public_id)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
@@ -81,28 +80,34 @@ class EmailVerificationService:
         otp_digest = hash_otp(otp, "email-verification", str(user.public_id))
 
         await store_otp_digest(
-            otp_digest, "email-verification", str(user.public_id), 300, redis
+            otp_digest=otp_digest,
+            purpose="email-verification",
+            user_id=str(user.public_id),
+            ex=300,
+            redis=redis,
         )
 
-        subject = otp_send.subject
-
-        await self.send_email(to=user_email, body=otp, subject=subject)
+        await self.send_email(
+            to=user.email, body=otp, subject="Verify your email address"
+        )
 
     async def verify_otp(
-        self, otp_verify: OTPVerify, session: AsyncSession, redis: Redis
+        self, user_public_id: UUID, code: str, session: AsyncSession, redis: Redis
     ):
         """Verify an OTP and mark the user's email as verified."""
-        user_email = otp_verify.email
 
-        stmt = select(User).where(User.email == user_email)
+        stmt = select(User).where(User.public_id == user_public_id)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
+        if user is None:
+            raise UserNotFoundError("User does not exist")
+
         submitted_otp = hash_otp(
-            otp_verify.otp, "email-verification", str(user.public_id)
+            otp=code, purpose="email-verification", user_id=str(user_public_id)
         )
         stored_otp_digest = await get_stored_otp_digest(
-            "email-verification", str(user.public_id), redis
+            purpose="email-verification", user_id=str(user_public_id), redis=redis
         )
 
         # The submitted OTP and stored otp are both hashed and compared

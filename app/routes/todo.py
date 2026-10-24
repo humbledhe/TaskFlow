@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,7 @@ from app.schemas.todo import (
     TodoUpdateModel,
     TodoResponseModel,
     Response,
+    FilterQuery,
 )
 from app.models.user import User
 
@@ -19,8 +20,14 @@ router = APIRouter()
 
 
 @router.get("", response_model=Response[list[TodoResponseModel]])
-async def get_todos(current_user: CurrentUserDependency, session: DbDependency):
-    todos = await TodoSerivces.get_todos(current_user, session)
+async def get_todos(
+    query: Annotated[FilterQuery, Query()],
+    current_user: CurrentUserDependency,
+    session: DbDependency,
+):
+    todos = await TodoSerivces.get_todos(
+        query=query, current_user=current_user, session=session
+    )
 
     return {"data": todos}
 
@@ -53,7 +60,7 @@ async def create_todo(
     return {"data": new_todo}
 
 
-@router.put("/{todo_uid}", response_model=Response[TodoResponseModel])
+@router.patch("/{todo_uid}", response_model=Response[TodoResponseModel])
 async def update_todo(
     todo_uid: UUID,
     update_todo: TodoUpdateModel,

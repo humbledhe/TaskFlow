@@ -3,6 +3,7 @@ from sqlalchemy import (
     String,
     Boolean,
     Enum,
+    Date,
     DateTime,
     func,
     ForeignKey,
@@ -11,10 +12,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from uuid import UUID, uuid7
-from datetime import datetime
+from datetime import date, datetime
 
 from .base import Base
-from app.enums.todo import TodoPriority
+from app.enums.todo import TodoPriority, TodoStatus
 
 
 class Todo(Base):
@@ -26,17 +27,17 @@ class Todo(Base):
 
     title: Mapped[str] = mapped_column(String(50), index=True)
 
-    description: Mapped[str] = mapped_column(nullable=True)
-
-    is_completed: Mapped[bool] = mapped_column("isCompleted", Boolean, default=False)
-
     priority: Mapped[TodoPriority] = mapped_column(
-        Enum(TodoPriority), default=TodoPriority.LOW
+        Enum(TodoPriority, name="todo_priority"), default=TodoPriority.LOW
+    )
+
+    status: Mapped[TodoStatus] = mapped_column(
+        Enum(TodoStatus, name="todo_status"), default=TodoStatus.TODO
     )
 
     user_id: Mapped[int] = mapped_column("userId", ForeignKey("users.id"), index=True)
 
-    due_date: Mapped[datetime] = mapped_column("dueDate", DateTime(timezone=True))
+    due_date: Mapped[date | None] = mapped_column("dueDate", Date)
 
     created_at: Mapped[datetime] = mapped_column(
         "created_at", DateTime(timezone=True), server_default=func.now()

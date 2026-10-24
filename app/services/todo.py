@@ -5,15 +5,27 @@ from uuid import UUID
 
 from app.models.todo import Todo
 from app.models.user import User
-from app.schemas.todo import TodoCreateModel, TodoUpdateModel
+from app.schemas.todo import TodoCreateModel, TodoUpdateModel, FilterQuery
 from app.core.exceptions import TodoNotFoundError, UserNotVerifiedError
 
 
 class TodoSerivces:
     @staticmethod
-    async def get_todos(current_user: User, session: AsyncSession) -> list[Todo]:
-        stmt = select(Todo).where(Todo.user_id == current_user.id)
-        result = await session.execute(stmt)
+    async def get_todos(
+        query: FilterQuery, current_user: User, session: AsyncSession
+    ) -> list[Todo]:
+        page_size = query.page_size
+        page = query.page
+        offset = (page - 1) * page_size
+        status = query.status
+
+        result = await session.execute(
+            select(Todo)
+            .where(Todo.user_id == current_user.id, Todo.status == status)
+            .limit(page_size)
+            .offset(offset)
+            .order_by(Todo.created_at, Todo.updated_at)
+        )
         todos = result.scalars().all()
 
         return todos
@@ -21,10 +33,8 @@ class TodoSerivces:
     async def get_todo(
         self, todo_uid: UUID, current_user: User, session: AsyncSession
     ) -> Todo:
-        stmt = (
-            select(Todo)
-            .where(Todo.user_id == current_user.id)
-            .where(Todo.public_id == todo_uid)
+        stmt = select(Todo).where(
+            Todo.user_id == current_user.id, Todo.public_id == todo_uid
         )
         result = await session.execute(stmt)
         todo = result.scalar_one_or_none()
@@ -54,9 +64,8 @@ class TodoSerivces:
 
         stmt = (
             update(Todo)
-            .where(Todo.user_id == current_user.id)
-            .where(Todo.public_id == todo_uid)
-            .values(**update_todo.model_dump())
+            .where(Todo.user_id == current_user.id, Todo.public_id == todo_uid)
+            .values(**update_todo.model_dump(exclude_unset=True))
             .returning(Todo)
         )
         result = await session.execute(stmt)

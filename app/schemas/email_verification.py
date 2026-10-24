@@ -21,5 +21,5 @@ class OTPVerify(BaseModel):
 
 
 class OTPSend(BaseModel):
-    email: EmailStr
+    user_public_id: UUID = Field(alias="userPublicId")
     subject: str = "Verify email"

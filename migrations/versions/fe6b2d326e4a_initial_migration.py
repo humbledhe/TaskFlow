@@ -1,8 +1,8 @@
-"""Create users and todos table
+"""Initial migration
 
-Revision ID: 543df54fb39c
+Revision ID: fe6b2d326e4a
 Revises: 
-Create Date: 2026-10-03 19:46:44.218756
+Create Date: 2026-10-23 12:30:27.198751
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '543df54fb39c'
+revision: str = 'fe6b2d326e4a'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -47,11 +47,10 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), sa.Identity(always=False), nullable=False),
     sa.Column('publicId', sa.Uuid(), nullable=False),
     sa.Column('title', sa.String(length=50), nullable=False),
-    sa.Column('description', sa.String(), nullable=True),
-    sa.Column('isCompleted', sa.Boolean(), nullable=False),
-    sa.Column('priority', sa.Enum('LOW', 'MEDIUM', 'HIGH', name='todopriority'), nullable=False),
+    sa.Column('priority', sa.Enum('LOW', 'MEDIUM', 'HIGH', name='todo_priority'), nullable=False),
+    sa.Column('status', sa.Enum('TODO', 'INPROGRESS', 'DONE', name='todo_status'), nullable=False),
     sa.Column('userId', sa.Integer(), nullable=False),
-    sa.Column('dueDate', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('dueDate', sa.Date(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['userId'], ['users.id'], ),

@@ -31,7 +31,7 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
 
 DbDependency = Annotated[
     AsyncSession,
-    Depends(get_async_db),
+    Depends(get_async_db, scope="function"),
 ]
 
 
@@ -110,11 +110,6 @@ class TokenBearer(HTTPBearer):
 
         # Prefer the appropriate HTTP-only cookie.
         token = request.cookies.get(cookie_name)
-
-        print("Request URL:", request.url)
-        print("Cookie names received:", list(request.cookies.keys()))
-        print("Expected cookie:", cookie_name)
-        print("Cookie received:", token is not None)
 
         # Fall back to Swagger's Authorization header.
         if not token:

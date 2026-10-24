@@ -17,7 +17,7 @@ async def get_user(current_user: CurrentUserDependency):
 
 
 @router.post(
-    "/create-account",
+    "",
     status_code=status.HTTP_201_CREATED,
     response_model=Response[UserResponse],
 )

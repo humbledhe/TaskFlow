@@ -4,6 +4,7 @@ from redis.asyncio import Redis
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
+from app.database.session import engine
 
 
 @asynccontextmanager
@@ -22,4 +23,7 @@ async def lifespan(app: FastAPI):
         await redis_client.ping()
         yield
     finally:
-        await redis_client.aclose()
+        try:
+            await redis_client.aclose()
+        finally:
+            await engine.dispose()
