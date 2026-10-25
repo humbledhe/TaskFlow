@@ -20,15 +20,16 @@ from app.core.exception_handlers import (
     forbidden_request_error,
 )
 from app.database.redis import lifespan
+from app.core.config import settings
 
 
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=["*"],
-    allow_methods=["*"],
+    allow_origins=settings.ALLOW_ORIGINS,
+    allow_credentials=True,
+    allow_methods=settings.ALLOW_METHODS,
     allow_headers=["*"],
 )
 
