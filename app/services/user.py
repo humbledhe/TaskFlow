@@ -37,7 +37,7 @@ class UserService:
             await session.refresh(user)
         except IntegrityError:
             await session.rollback()
-            raise EmailAlreadyExistsError("Email already exists")
+            raise EmailAlreadyExistsError("Email already exists. Please Login")
 
         return user
 

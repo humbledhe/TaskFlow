@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 from uuid import UUID, uuid7
 
 from app.core.dependencies import DbDependency, Credentials, RedisDependency
+from app.core.exceptions import UserNotVerifiedError
 from app.services.auth import AuthService
 
 # from app.schemas.auth import Response, AuthResponse
@@ -32,6 +33,9 @@ async def login(
     session: DbDependency,
 ):
     user = await AuthService.authenticate_user(form_data, session)
+
+    if not user.is_verified:
+        raise UserNotVerifiedError("User account has not been verified")
 
     now = datetime.now(timezone.utc)
 

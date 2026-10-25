@@ -6,3 +6,7 @@
 
 # Python Cache
 __pycache__/dump.rdb
+__pycache__
+
+# Redis
+dump.rdb

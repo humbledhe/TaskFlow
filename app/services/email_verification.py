@@ -1,4 +1,10 @@
 import aiosmtplib
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_delay,
+    wait_random_exponential,
+)
 from email.message import EmailMessage
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +49,14 @@ async def get_stored_otp_digest(purpose: str, user_id: str, redis: Redis):
 class EmailVerificationService:
     """Handle email delivery and email verification."""
 
+    @retry(
+        retry(
+            retry=retry_if_exception_type((OSError, aiosmtplib.SMTPException)),
+            stop=stop_after_delay(300),
+            wait=wait_random_exponential(multiplier=1, min=2, max=30),
+        ),
+        reraise=True,
+    )
     async def send_email(self, *, to: str, body: str, subject: str) -> None:
         """Send a plain-text email through the configured SMTP server."""
         message = EmailMessage()

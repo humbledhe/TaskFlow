@@ -51,9 +51,6 @@ class AuthService:
         if user is None:
             raise InvalidCredentialsError("Invalid email or password")
 
-        if not user.is_verified:
-            raise UserNotVerifiedError("User account has not been verified")
-
         correct_password = user.password_hash
 
         if not verify(password, correct_password):
