@@ -34,9 +34,6 @@ async def login(
 ):
     user = await AuthService.authenticate_user(form_data, session)
 
-    if not user.is_verified:
-        raise UserNotVerifiedError("User account has not been verified")
-
     now = datetime.now(timezone.utc)
 
     ACCESS_TOKEN_EXPIRE_MINUTES = 60

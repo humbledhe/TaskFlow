@@ -3,10 +3,11 @@
 
 # Environment Variables
 .env
+.env.*
 
 # Python Cache
-__pycache__/dump.rdb
-__pycache__
+__pycache__/
+*.py[cod]
 
 # Redis
 dump.rdb

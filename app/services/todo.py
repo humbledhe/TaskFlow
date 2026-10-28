@@ -19,13 +19,19 @@ class TodoSerivces:
         offset = (page - 1) * page_size
         status = query.status
 
-        result = await session.execute(
+        stmt = (
             select(Todo)
-            .where(Todo.user_id == current_user.id, Todo.status == status)
+            .where(Todo.user_id == current_user.id)
             .limit(page_size)
             .offset(offset)
             .order_by(Todo.created_at, Todo.updated_at)
         )
+
+        # if stmt is not None:
+        #     stmt = stmt.where(Todo.status == status)
+
+        result = await session.execute(stmt)
+
         todos = result.scalars().all()
 
         return todos

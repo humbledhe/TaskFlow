@@ -4,10 +4,7 @@ from pydantic import field_validator
 
 class Settings(BaseSettings):
     DATABASE_URL: str
-    SMTP_HOST: str
-    SMTP_PORT: int
-    SMTP_USERNAME: str
-    SMTP_PASSWORD: str
+    SENDGRID_API_KEY: str
     MAIL_FROM: str
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str

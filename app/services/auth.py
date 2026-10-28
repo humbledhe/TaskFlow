@@ -8,10 +8,8 @@ from uuid import UUID, uuid7
 from datetime import datetime, timezone, timedelta
 
 from app.models.user import User
-from app.schemas.email_verification import OTPSend
 from app.core.exceptions import InvalidCredentialsError, UserNotVerifiedError
 from app.core.security import verify
-from .email_verification import EmailVerificationService
 from app.core.config import settings
 
 
@@ -57,11 +55,6 @@ class AuthService:
             raise InvalidCredentialsError("Invalid email or password")
 
         return user
-
-    async def forget_password_reset_otp(otp_send: OTPSend, session: AsyncSession):
-        email_verification_service = EmailVerificationService()
-
-        await email_verification_service.send_otp(otp_send, session)
 
     @staticmethod
     async def logout_user(token_details: dict, redis: Redis) -> None:

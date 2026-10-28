@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.todo import router as todo_router
 from app.routes.user import router as user_router
-from app.routes.email_verification import router as email_verification_router
 from app.routes.auth import router as auth_router
 from app.core.exceptions import (
     NotFoundError,
@@ -43,12 +42,6 @@ app.add_exception_handler(ForbiddenRequestError, forbidden_request_error)
 app.include_router(todo_router, prefix="/api/v1/todos", tags=["Todo"])
 
 app.include_router(user_router, prefix="/api/v1/users", tags=["User"])
-
-app.include_router(
-    email_verification_router,
-    prefix="/api/v1/email_verifications",
-    tags=["Email Verification"],
-)
 
 app.include_router(
     auth_router,

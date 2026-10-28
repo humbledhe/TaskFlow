@@ -39,4 +39,4 @@ class Response(BaseModel, Generic[T]):
 class FilterQuery(BaseModel):
     page_size: int = 6
     page: int = 1
-    status: TodoStatus | None = TodoStatus.TODO
+    status: TodoStatus | None = None
